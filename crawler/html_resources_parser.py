@@ -19,17 +19,17 @@ class HTMLResourcesParser(HTMLParser):
         if tag == 'a':
             for (key, value) in attrs:
                 if key == 'href':
-                    new_url = urljoin(self.base_url, value)
-                    self.links.add(new_url)
+                    url = urljoin(self.base_url, value).strip('/')
+                    self.links.add(url)
         if tag == 'link':
             for (key, value) in attrs:
                 if key == 'href':
-                    rel_url = urljoin(self.base_url, value)
-                    self.resources.add(rel_url)
+                    url = urljoin(self.base_url, value).strip('/')
+                    self.resources.add(url)
         for (key, value) in attrs:
             if key == 'src':
-                source_url = urljoin(self.base_url, value)
-                self.resources.add(source_url)
+                url = urljoin(self.base_url, value).strip('/')
+                self.resources.add(url)
 
     def extract_links_and_assets(self, html):
         '''Parses the provided html document and returns links and resources extracted from it
@@ -42,8 +42,5 @@ class HTMLResourcesParser(HTMLParser):
         '''
         self.links = set()
         self.resources = set()
-        try:
-            self.feed(html)
-        except:
-            print self.base_url
+        self.feed(html)
         return self.links, self.resources
