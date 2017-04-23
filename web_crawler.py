@@ -1,3 +1,4 @@
+import argparse
 import multiprocessing
 from multiprocessing import Pool
 
@@ -24,12 +25,17 @@ def print_results(sitemap, assets):
 
 if __name__ == '__main__':
     import time
+    parser = argparse.ArgumentParser()
+    parser.add_argument("domain", help="The domain to crawl (e.g. yoyowallet.com)")
+    parser.add_argument("--workers", type=int, nargs="?", default=8, help="The number of workers to start")
+    args = parser.parse_args()
+
     logger = multiprocessing.log_to_stderr()
 
     t0 = time.time()
-    crawler = Crawler("yoyowallet.com")
+    crawler = Crawler(args.domain)
 
-    pool = Pool(8, crawler.start_crawler)
+    pool = Pool(args.workers, crawler.start_crawler)
 
     pool.close()
     pool.join()
