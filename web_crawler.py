@@ -29,7 +29,7 @@ if __name__ == '__main__':
     t0 = time.time()
     crawler = Crawler("yoyowallet.com")
 
-    pool = Pool(4, crawler.start_crawler)
+    pool = Pool(8, crawler.start_crawler)
 
     pool.close()
     pool.join()

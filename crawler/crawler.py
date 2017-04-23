@@ -9,8 +9,12 @@ from html_resources_parser import HTMLResourcesParser
 
 
 class Crawler(object):
+    WAITING_STATUS = "waiting"
+    PROCESSING_STATUS = "processing"
+
     def __init__(self, domain):
         manager = Manager()
+        self.worker_register = manager.dict()
 
         # Create sitemap and assets dictionaries to hold results
         self._sitemap = manager.dict()
@@ -33,6 +37,9 @@ class Crawler(object):
     @property
     def assets(self):
         return self._assets._getvalue()
+
+    def workers_processing(self):
+        return self.PROCESSING_STATUS in self.worker_register.values()
 
     def crawl_url(self, url):
         '''Get html from the specified url and extract all links and resources referenced
@@ -68,11 +75,20 @@ class Crawler(object):
         :param assets: A dictionary mapping pages to assets references by the page
         :param invalid_urls: A list containing urls which have been identified as invalid
         '''
+        worker_id = len(self.worker_register)+1
+        self.worker_register[worker_id] = self.WAITING_STATUS
+
         while True:
             try:
-                url = self._urls_to_crawl.get(timeout=5)
+                self.worker_register[worker_id] = self.WAITING_STATUS
+                url = self._urls_to_crawl.get(timeout=1)
             except Empty:
-                break
+                if self.workers_processing():
+                    continue
+                else:
+                    break
+            self.worker_register[worker_id] = self.PROCESSING_STATUS
+
             try:
                 (links, resources) = self.crawl_url(url)
             except RequestException:
