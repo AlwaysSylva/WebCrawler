@@ -24,7 +24,6 @@ def print_results(sitemap, assets):
 
 
 if __name__ == '__main__':
-    import time
     parser = argparse.ArgumentParser()
     parser.add_argument("domain", help="The domain to crawl (e.g. yoyowallet.com)")
     parser.add_argument("--workers", type=int, nargs="?", default=8, help="The number of workers to start (default = 8)")
@@ -32,15 +31,11 @@ if __name__ == '__main__':
 
     logger = multiprocessing.log_to_stderr()
 
-    t0 = time.time()
     crawler = Crawler(args.domain)
 
     pool = Pool(args.workers, crawler.start_crawler)
 
     pool.close()
     pool.join()
-    t1 = time.time()
 
     print_results(crawler.sitemap, crawler.assets)
-
-    print "Total time: " + str(t1-t0)
