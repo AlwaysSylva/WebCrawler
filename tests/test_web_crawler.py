@@ -1,11 +1,14 @@
-from Queue import Queue
-
 import pytest
 import requests
 from requests import Response, RequestException
 
-import web_crawler
+from crawler.crawler import Crawler
 from crawler.html_resources_parser import HTMLResourcesParser
+
+
+@pytest.fixture
+def crawler():
+    return Crawler("test.com")
 
 
 @pytest.fixture
@@ -83,126 +86,96 @@ def monkeypatch_html_resources_parser(monkeypatch):
     monkeypatch.setattr(HTMLResourcesParser, "extract_links_and_assets", mockextract)
 
 
-def test_crawl_url_valid(monkeypatch_requests_get):
-    (links, resources) = web_crawler.crawl_url("http://test.com")
+def test_crawl_url_valid(crawler, monkeypatch_requests_get):
+    (links, resources) = crawler.crawl_url("http://test.com")
     assert links == {"http://test.com/link"}
     assert resources == {"http://test.com/resource"}
 
 
-def test_crawl_url_invalid(monkeypatch_requests_get_invalid):
+def test_crawl_url_invalid(crawler, monkeypatch_requests_get_invalid):
     with pytest.raises(RequestException):
-        (links, resources) = web_crawler.crawl_url("http://test.com")
+        (links, resources) = crawler.crawl_url("http://test.com")
 
 
-def test_crawler(monkeypatch, monkeypatch_requests_head):
+def test_crawler(crawler, monkeypatch, monkeypatch_requests_head):
     def mockcrawl(url):
         links = {"http://test.com/link"}
         resources = {"http://test.com/resource"}
         return links, resources
 
-    monkeypatch.setattr(web_crawler, "crawl_url", mockcrawl)
+    monkeypatch.setattr(crawler, "crawl_url", mockcrawl)
 
-    domain = "test.com"
-    urls_to_crawl = Queue()
-    urls_to_crawl.put("http://" + domain)
-    sitemap = {}
-    assets = {}
-    web_crawler.crawler(domain, urls_to_crawl, [], sitemap, assets, [])
-    assert sitemap == {"http://test.com": {"http://test.com/link"},
-                       "http://test.com/link": {"http://test.com/link"}}
-    assert assets == {"http://test.com": {"http://test.com/link", "http://test.com/resource"},
-                      "http://test.com/link": {"http://test.com/link", "http://test.com/resource"}}
+    crawler.start_crawler()
+    assert crawler.sitemap == {"http://test.com": {"http://test.com/link"},
+                               "http://test.com/link": {"http://test.com/link"}}
+    assert crawler.assets == {"http://test.com": {"http://test.com/link", "http://test.com/resource"},
+                              "http://test.com/link": {"http://test.com/link", "http://test.com/resource"}}
 
 
-def test_crawler_non_html_link(monkeypatch, monkeypatch_requests_head_non_html):
+def test_crawler_non_html_link(crawler, monkeypatch, monkeypatch_requests_head_non_html):
     def mockcrawl(url):
         links = {"http://test.com/link"}
         resources = set()
         return links, resources
 
-    monkeypatch.setattr(web_crawler, "crawl_url", mockcrawl)
+    monkeypatch.setattr(crawler, "crawl_url", mockcrawl)
 
-    domain = "test.com"
-    urls_to_crawl = Queue()
-    urls_to_crawl.put("http://" + domain)
-    sitemap = {}
-    assets = {}
-    web_crawler.crawler(domain, urls_to_crawl, [], sitemap, assets, [])
-    assert sitemap == {"http://test.com": set()}
-    assert assets == {"http://test.com": {"http://test.com/link"}}
+    crawler.start_crawler()
+    assert crawler.sitemap == {"http://test.com": set()}
+    assert crawler.assets == {"http://test.com": {"http://test.com/link"}}
 
 
-def test_crawler_no_content_type_link(monkeypatch, monkeypatch_requests_head_no_content_type):
+def test_crawler_no_content_type_link(crawler, monkeypatch, monkeypatch_requests_head_no_content_type):
     def mockcrawl(url):
         links = {"http://test.com/link"}
         resources = set()
         return links, resources
 
-    monkeypatch.setattr(web_crawler, "crawl_url", mockcrawl)
+    monkeypatch.setattr(crawler, "crawl_url", mockcrawl)
 
-    domain = "test.com"
-    urls_to_crawl = Queue()
-    urls_to_crawl.put("http://" + domain)
-    sitemap = {}
-    assets = {}
-    web_crawler.crawler(domain, urls_to_crawl, [], sitemap, assets, [])
-    assert sitemap == {"http://test.com": {"http://test.com/link"},
-                       "http://test.com/link": {"http://test.com/link"}}
-    assert assets == {"http://test.com": {"http://test.com/link"},
-                       "http://test.com/link": {"http://test.com/link"}}
+    crawler.start_crawler()
+    assert crawler.sitemap == {"http://test.com": {"http://test.com/link"},
+                               "http://test.com/link": {"http://test.com/link"}}
+    assert crawler.assets == {"http://test.com": {"http://test.com/link"},
+                              "http://test.com/link": {"http://test.com/link"}}
 
 
-def test_crawler_non_http_link(monkeypatch):
+def test_crawler_non_http_link(crawler, monkeypatch):
     def mockcrawl(url):
         links = {"mailto:mail@test.com"}
         resources = set()
         return links, resources
 
-    monkeypatch.setattr(web_crawler, "crawl_url", mockcrawl)
+    monkeypatch.setattr(crawler, "crawl_url", mockcrawl)
 
-    domain = "test.com"
-    urls_to_crawl = Queue()
-    urls_to_crawl.put("http://" + domain)
-    sitemap = {}
-    assets = {}
-    web_crawler.crawler(domain, urls_to_crawl, [], sitemap, assets, [])
-    assert sitemap == {"http://test.com": set()}
-    assert assets == {"http://test.com": set()}
+    crawler.start_crawler()
+    assert crawler.sitemap == {"http://test.com": set()}
+    assert crawler.assets == {"http://test.com": set()}
 
 
-def test_crawler_invalid_link(monkeypatch, monkeypatch_requests_head_invalid):
+def test_crawler_invalid_link(crawler, monkeypatch, monkeypatch_requests_head_invalid):
     def mockcrawl(url):
         links = {"http://test.com/link"}
         resources = set()
         return links, resources
 
-    monkeypatch.setattr(web_crawler, "crawl_url", mockcrawl)
+    monkeypatch.setattr(crawler, "crawl_url", mockcrawl)
 
-    domain = "test.com"
-    urls_to_crawl = Queue()
-    urls_to_crawl.put("http://" + domain)
-    sitemap = {}
-    assets = {}
-    web_crawler.crawler(domain, urls_to_crawl, [], sitemap, assets, [])
-    assert sitemap == {"http://test.com": set()}
-    assert assets == {"http://test.com": set()}
+    crawler.start_crawler()
+    assert crawler.sitemap == {"http://test.com": set()}
+    assert crawler.assets == {"http://test.com": set()}
 
 
-def test_crawler_matching_link_resource(monkeypatch, monkeypatch_requests_head):
+def test_crawler_matching_link_resource(crawler, monkeypatch, monkeypatch_requests_head):
     def mockcrawl(url):
         links = {"http://test.com/link"}
         resources = {"http://test.com/link"}
         return links, resources
 
-    monkeypatch.setattr(web_crawler, "crawl_url", mockcrawl)
+    monkeypatch.setattr(crawler, "crawl_url", mockcrawl)
 
-    domain = "test.com"
-    urls_to_crawl = Queue()
-    urls_to_crawl.put("http://" + domain)
-    sitemap = {}
-    assets = {}
-    web_crawler.crawler(domain, urls_to_crawl, [], sitemap, assets, [])
-    assert sitemap == {"http://test.com": {"http://test.com/link"},
-                       "http://test.com/link": {"http://test.com/link"}}
-    assert assets == {"http://test.com": {"http://test.com/link"},
-                       "http://test.com/link": {"http://test.com/link"}}
+    crawler.start_crawler()
+    assert crawler.sitemap == {"http://test.com": {"http://test.com/link"},
+                               "http://test.com/link": {"http://test.com/link"}}
+    assert crawler.assets == {"http://test.com": {"http://test.com/link"},
+                              "http://test.com/link": {"http://test.com/link"}}
