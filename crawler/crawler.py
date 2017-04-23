@@ -13,6 +13,10 @@ class Crawler(object):
     PROCESSING_STATUS = "processing"
 
     def __init__(self, domain):
+        '''Set up a new Crawler for the domain specified
+        
+        :param domain: The domain to which the crawler is restricted
+        '''
         manager = Manager()
         self.worker_register = manager.dict()
 
@@ -41,39 +45,16 @@ class Crawler(object):
     def workers_processing(self):
         return self.PROCESSING_STATUS in self.worker_register.values()
 
-    def crawl_url(self, url):
-        '''Get html from the specified url and extract all links and resources referenced
-
-        :param url: The url to get html from
-        :return: Returns a tuple (links, resources) of links and resources found
-        '''
-        parser = HTMLResourcesParser(url)
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            html = response.text
-            return parser.extract_links_and_assets(html)
-        except RequestException, e:
-            print "Could not open url: " + url + " (" + str(e) + ")"
-            raise
-
     def is_http(self, split_link):
         return split_link.scheme in {"http", "https"}
 
     def start_crawler(self):
-        '''Crawl urls provided in a queue and populate a sitemap and dictionary of assets per page
-
+        '''Crawl urls within the domain specified and populates a sitemap and dictionary of assets per page
+    
         The crawler visits each url and identifies links and resources from the page. Each link is validated and the 
         header is checked. Any links to html pages in the same domain are added to the queue to be crawled. Any invalid 
         urls are added to a list to avoid attempting to validate them again. All links and resources area added to the 
         assets dictionary. 
-
-        :param domain: The domain to which the crawler is restricted
-        :param urls_to_crawl: A queue containing urls which should be visited by the crawler
-        :param crawled: A list containing urls already added to urls_to_crawl
-        :param sitemap: A dictionary mapping pages to urls referenced by the page
-        :param assets: A dictionary mapping pages to assets references by the page
-        :param invalid_urls: A list containing urls which have been identified as invalid
         '''
         worker_id = len(self.worker_register)+1
         self.worker_register[worker_id] = self.WAITING_STATUS
@@ -121,3 +102,19 @@ class Crawler(object):
 
             self._sitemap[url] = page_links
             self._assets[url] = page_assets
+
+    def crawl_url(self, url):
+        '''Get html from the specified url and extract all links and resources referenced
+
+        :param url: The url to get html from
+        :return: Returns a tuple (links, resources) of links and resources found
+        '''
+        parser = HTMLResourcesParser(url)
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            html = response.text
+            return parser.extract_links_and_assets(html)
+        except RequestException, e:
+            print "Could not open url: " + url + " (" + str(e) + ")"
+            raise
